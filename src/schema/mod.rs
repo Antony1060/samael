@@ -24,7 +24,6 @@ use quick_xml::Writer;
 
 use std::io::Cursor;
 use std::str::FromStr;
-
 use thiserror::Error;
 
 #[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Ord, PartialOrd)]

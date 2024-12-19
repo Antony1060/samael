@@ -1,6 +1,6 @@
 use crate::crypto;
 use crate::metadata::{Endpoint, IndexedEndpoint, KeyDescriptor, NameIdFormat, SpSsoDescriptor};
-use crate::schema::{Assertion, Response};
+use crate::schema::{Assertion, LogoutRequest, Response};
 use crate::traits::ToXml;
 use crate::{
     key_info::{KeyInfo, X509Data},
@@ -527,6 +527,22 @@ fn parse_certificates(key_descriptor: &KeyDescriptor) -> Result<Vec<x509::X509>,
         .unwrap_or(Ok(vec![]))
 }
 
+trait SamlRedirect {
+    fn redirect(&self, relay_state: &str) -> Result<Option<Url>, Box<dyn std::error::Error>>;
+
+    fn signed_redirect(
+        &self,
+        relay_state: &str,
+        private_key: openssl::pkey::PKey<Private>,
+    ) -> Result<Option<Url>, Box<dyn std::error::Error>>;
+}
+
+trait SamlRedirectExt {
+    fn destination(&self) -> Option<String>;
+
+    fn to_xml_string(&self) -> Result<String, Box<dyn std::error::Error>>;
+}
+
 impl AuthnRequest {
     pub fn post(&self, relay_state: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
         let encoded = general_purpose::STANDARD.encode(self.to_string()?.as_bytes());
@@ -549,16 +565,41 @@ impl AuthnRequest {
             Ok(None)
         }
     }
+}
 
-    pub fn redirect(&self, relay_state: &str) -> Result<Option<Url>, Box<dyn std::error::Error>> {
+impl SamlRedirectExt for AuthnRequest {
+    fn destination(&self) -> Option<String> {
+        self.destination.clone()
+    }
+
+    fn to_xml_string(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.to_string()
+    }
+}
+
+impl SamlRedirectExt for LogoutRequest {
+    fn destination(&self) -> Option<String> {
+        self.destination.clone()
+    }
+
+    fn to_xml_string(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.to_string()
+    }
+}
+
+impl<'a, T> SamlRedirect for T
+where
+    T: SamlRedirectExt + Debug,
+{
+    fn redirect(&self, relay_state: &str) -> Result<Option<Url>, Box<dyn std::error::Error>> {
         let mut compressed_buf = vec![];
         {
             let mut encoder = DeflateEncoder::new(&mut compressed_buf, Compression::default());
-            encoder.write_all(self.to_string()?.as_bytes())?;
+            encoder.write_all(self.to_xml_string()?.as_bytes())?;
         }
         let encoded = general_purpose::STANDARD.encode(&compressed_buf);
 
-        if let Some(destination) = self.destination.as_ref() {
+        if let Some(destination) = self.destination().as_ref() {
             let mut url: Url = destination.parse()?;
             url.query_pairs_mut().append_pair("SAMLRequest", &encoded);
             if !relay_state.is_empty() {
@@ -570,18 +611,16 @@ impl AuthnRequest {
         }
     }
 
-    pub fn signed_redirect(
+    fn signed_redirect(
         &self,
         relay_state: &str,
         private_key: openssl::pkey::PKey<Private>,
     ) -> Result<Option<Url>, Box<dyn std::error::Error>> {
         let unsigned_url = self.redirect(relay_state)?;
 
-        if unsigned_url.is_none() {
+        let Some(mut unsigned_url) = unsigned_url else {
             return Ok(unsigned_url);
-        }
-
-        let mut unsigned_url = unsigned_url.unwrap();
+        };
 
         // Refer to section 3.4.4.1 (page 17) of
         //
