@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use crate::crypto::verify_signed_xml;
 use crate::idp::sp_extractor::{RequiredAttribute, SPMetadataExtractor};
 use crate::idp::verified_request::UnverifiedAuthnRequest;
-use crate::service_provider::ServiceProvider;
+use crate::service_provider::{DestinationVariant, ServiceProvider};
 
 #[test]
 fn test_self_signed_authn_request() {
@@ -215,7 +215,7 @@ fn test_do_not_accept_unsigned_response() {
         "/test_vectors/response.xml",
     ));
 
-    let resp = sp.parse_xml_response(unsigned_response_xml, None);
+    let resp = sp.parse_xml_response(unsigned_response_xml, None, DestinationVariant::Acs);
     assert!(resp.is_err());
 
     let err = resp.err().unwrap();
@@ -242,7 +242,7 @@ fn test_do_not_accept_signed_with_wrong_key() {
         "/test_vectors/response_signed_by_idp_2.xml",
     ));
 
-    let resp = sp.parse_xml_response(wrong_cert_signed_response_xml, None);
+    let resp = sp.parse_xml_response(wrong_cert_signed_response_xml, None, DestinationVariant::Acs);
     assert!(resp.is_err());
 
     let err = resp.err().unwrap();
@@ -280,6 +280,7 @@ fn test_accept_signed_with_correct_key_idp() {
     let resp = sp.parse_xml_response(
         correct_cert_signed_response_xml,
         Some(&["ONELOGIN_4fee3b046395c4e751011e97f8900b5273d56685"]),
+        DestinationVariant::Acs
     );
 
     assert!(resp.is_ok());
@@ -311,6 +312,7 @@ fn test_accept_signed_with_correct_key_idp_2() {
     let resp = sp.parse_xml_response(
         correct_cert_signed_response_xml,
         Some(&["ONELOGIN_4fee3b046395c4e751011e97f8900b5273d56685"]),
+        DestinationVariant::Acs
     );
 
     assert!(resp.is_ok());
@@ -342,6 +344,7 @@ fn test_accept_signed_with_correct_key_idp_3() {
     let resp = sp.parse_xml_response(
         correct_cert_signed_response_xml,
         Some(&["ONELOGIN_4fee3b046395c4e751011e97f8900b5273d56685"]),
+        DestinationVariant::Acs
     );
 
     assert!(resp.is_ok());

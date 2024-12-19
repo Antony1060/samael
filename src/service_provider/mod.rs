@@ -101,6 +101,12 @@ pub enum Error {
     MissingSloUrl,
 }
 
+#[derive(Debug, Clone)]
+pub enum  DestinationVariant {
+    Acs,
+    Slo
+}
+
 #[derive(Builder, Clone)]
 #[builder(default, setter(into))]
 pub struct ServiceProvider {
@@ -311,10 +317,11 @@ impl ServiceProvider {
         &self,
         encoded_resp: &str,
         possible_request_ids: Option<&[&str]>,
+        destination_variant: DestinationVariant
     ) -> Result<Assertion, Box<dyn std::error::Error>> {
         let bytes = general_purpose::STANDARD.decode(encoded_resp)?;
         let decoded = std::str::from_utf8(&bytes)?;
-        let assertion = self.parse_xml_response(decoded, possible_request_ids)?;
+        let assertion = self.parse_xml_response(decoded, possible_request_ids, destination_variant)?;
         Ok(assertion)
     }
 
@@ -322,6 +329,7 @@ impl ServiceProvider {
         &self,
         response_xml: &str,
         possible_request_ids: Option<&[&str]>,
+        destination_variant: DestinationVariant,
     ) -> Result<Assertion, Error> {
         let reduced_xml = if let Some(sign_certs) = self.idp_signing_certs()? {
             reduce_xml_to_signed(response_xml, &sign_certs)
@@ -332,7 +340,7 @@ impl ServiceProvider {
         let response: Response = reduced_xml
             .parse()
             .map_err(|_e| Error::FailedToParseSamlResponse)?;
-        self.validate_destination(&response)?;
+        self.validate_destination(&response, destination_variant)?;
         let mut request_id_valid = false;
         if self.allow_idp_initiated {
             request_id_valid = true;
@@ -443,9 +451,14 @@ impl ServiceProvider {
         Ok(())
     }
 
-    fn validate_destination(&self, response: &Response) -> Result<(), Error> {
+    fn validate_destination(&self, response: &Response, destination_variant: DestinationVariant) -> Result<(), Error> {
+        let url = match destination_variant {
+            DestinationVariant::Acs => self.acs_url.as_deref(),
+            DestinationVariant::Slo => self.slo_url.as_deref(),
+        };
+
         if (response.signature.is_some() || response.destination.is_some())
-            && response.destination.as_deref() != self.acs_url.as_deref()
+            && response.destination.as_deref() != url
         {
             return Err(Error::DestinationValidationError {
                 response_destination: response.destination.clone(),
