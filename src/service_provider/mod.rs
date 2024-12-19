@@ -638,7 +638,7 @@ where
         // see RFC 4051 for choices
         let digest = match private_key {
             ref it if it.rsa().is_ok() => {
-                unsigned_url.clone().query_pairs_mut().append_pair(
+                unsigned_url.query_pairs_mut().append_pair(
                     "SigAlg",
                     "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
                 );
