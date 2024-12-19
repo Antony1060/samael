@@ -102,9 +102,9 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone)]
-pub enum  DestinationVariant {
+pub enum DestinationVariant {
     Acs,
-    Slo
+    Slo,
 }
 
 #[derive(Builder, Clone)]
@@ -317,11 +317,12 @@ impl ServiceProvider {
         &self,
         encoded_resp: &str,
         possible_request_ids: Option<&[&str]>,
-        destination_variant: DestinationVariant
+        destination_variant: DestinationVariant,
     ) -> Result<Assertion, Box<dyn std::error::Error>> {
         let bytes = general_purpose::STANDARD.decode(encoded_resp)?;
         let decoded = std::str::from_utf8(&bytes)?;
-        let assertion = self.parse_xml_response(decoded, possible_request_ids, destination_variant)?;
+        let assertion =
+            self.parse_xml_response(decoded, possible_request_ids, destination_variant)?;
         Ok(assertion)
     }
 
@@ -451,7 +452,11 @@ impl ServiceProvider {
         Ok(())
     }
 
-    fn validate_destination(&self, response: &Response, destination_variant: DestinationVariant) -> Result<(), Error> {
+    fn validate_destination(
+        &self,
+        response: &Response,
+        destination_variant: DestinationVariant,
+    ) -> Result<(), Error> {
         let url = match destination_variant {
             DestinationVariant::Acs => self.acs_url.as_deref(),
             DestinationVariant::Slo => self.slo_url.as_deref(),
