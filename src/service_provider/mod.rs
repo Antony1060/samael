@@ -636,16 +636,15 @@ where
         // from the document but leaving them in usually works too.
 
         // see RFC 4051 for choices
-        if private_key.ec_key().is_ok() {
-            unsigned_url.query_pairs_mut().append_pair(
-                "SigAlg",
-                "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256",
-            );
-        } else if private_key.rsa().is_ok() {
+        if private_key.rsa().is_ok() {
             unsigned_url.query_pairs_mut().append_pair(
                 "SigAlg",
                 "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
             );
+        } else if private_key.dsa().is_ok() {
+            unsigned_url
+                .query_pairs_mut()
+                .append_pair("SigAlg", "http://www.w3.org/2000/09/xmldsig#dsa-sha1");
         } else {
             return Err(Error::UnsupportedKey)?;
         }
