@@ -655,7 +655,7 @@ where
         // http://some.idp.com?SAMLRequest=value&RelayState=value&SigAlg=value
         //                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         //
-        // then add the "Signature" query parameter afterwards.
+        // then add the "Signature" query parameter afterward.
         let string_to_sign: String = unsigned_url
             .query()
             .ok_or(Error::UnexpectedError)?
