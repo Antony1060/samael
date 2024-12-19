@@ -318,7 +318,7 @@ impl ServiceProvider {
         encoded_resp: &str,
         possible_request_ids: Option<&[&str]>,
         destination_variant: DestinationVariant,
-    ) -> Result<Assertion, Box<dyn std::error::Error>> {
+    ) -> Result<Option<Assertion>, Box<dyn std::error::Error>> {
         let bytes = general_purpose::STANDARD.decode(encoded_resp)?;
         let decoded = std::str::from_utf8(&bytes)?;
         let assertion =
@@ -331,7 +331,7 @@ impl ServiceProvider {
         response_xml: &str,
         possible_request_ids: Option<&[&str]>,
         destination_variant: DestinationVariant,
-    ) -> Result<Assertion, Error> {
+    ) -> Result<Option<Assertion>, Error> {
         let reduced_xml = if let Some(sign_certs) = self.idp_signing_certs()? {
             reduce_xml_to_signed(response_xml, &sign_certs)
                 .map_err(|_e| Error::FailedToValidateSignature)?
@@ -391,9 +391,9 @@ impl ServiceProvider {
             Err(Error::EncryptedAssertionsNotYetSupported)
         } else if let Some(assertion) = &response.assertion {
             self.validate_assertion(assertion, possible_request_ids)?;
-            Ok(assertion.clone())
+            Ok(Some(assertion.clone()))
         } else {
-            Err(Error::UnexpectedError)
+            Ok(None)
         }
     }
 
