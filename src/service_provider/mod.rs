@@ -636,18 +636,24 @@ where
         // from the document but leaving them in usually works too.
 
         // see RFC 4051 for choices
-        if private_key.rsa().is_ok() {
-            unsigned_url.query_pairs_mut().append_pair(
-                "SigAlg",
-                "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-            );
-        } else if private_key.dsa().is_ok() {
-            unsigned_url
-                .query_pairs_mut()
-                .append_pair("SigAlg", "http://www.w3.org/2000/09/xmldsig#dsa-sha1");
-        } else {
-            return Err(Error::UnsupportedKey)?;
-        }
+        let digest = match private_key {
+            ref it if it.rsa().is_ok() => {
+                unsigned_url.clone().query_pairs_mut().append_pair(
+                    "SigAlg",
+                    "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+                );
+
+                openssl::hash::MessageDigest::sha256()
+            }
+            ref it if it.dsa().is_ok() => {
+                unsigned_url
+                    .query_pairs_mut()
+                    .append_pair("SigAlg", "http://www.w3.org/2000/09/xmldsig#dsa-sha1");
+
+                openssl::hash::MessageDigest::sha1()
+            }
+            _ => return Err(Error::UnsupportedKey)?,
+        };
 
         // Sign *only* the existing url's encoded query parameters:
         //
@@ -662,8 +668,7 @@ where
 
         let pkey = private_key;
 
-        let mut signer =
-            openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), pkey.as_ref())?;
+        let mut signer = openssl::sign::Signer::new(digest, pkey.as_ref())?;
 
         signer.update(string_to_sign.as_bytes())?;
 
