@@ -239,6 +239,7 @@ impl TryFrom<&AuthnRequest> for Event<'_> {
 mod test {
     use super::*;
     use crate::crypto::UrlVerifier;
+    use crate::service_provider::SamlRedirect;
 
     #[test]
     #[cfg(feature = "xmlsec")]
@@ -295,7 +296,7 @@ mod test {
 
         let signed_authn_redirect_url = authn_request_sign_template
             .parse::<AuthnRequest>()?
-            .signed_redirect("", private_key)?
+            .signed_redirect(None, private_key)?
             .unwrap();
 
         let url_verifier = UrlVerifier::from_rsa_pem(public_key)?;
@@ -326,7 +327,7 @@ mod test {
 
         let signed_authn_redirect_url = authn_request_sign_template
             .parse::<AuthnRequest>()?
-            .signed_redirect("some_relay_state_here", private_key)?
+            .signed_redirect(Some("some_relay_state_here"), private_key)?
             .unwrap();
 
         let url_verifier = UrlVerifier::from_rsa_der(public_key)?;
@@ -358,7 +359,7 @@ mod test {
 
         let signed_authn_redirect_url = authn_request_sign_template
             .parse::<AuthnRequest>()?
-            .signed_redirect("some_relay_state_here", private_key)?
+            .signed_redirect(Some("some_relay_state_here"), private_key)?
             .unwrap();
 
         let url_verifier = UrlVerifier::from_x509_cert_pem(public_cert)?;

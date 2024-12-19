@@ -671,7 +671,7 @@ impl UrlVerifier {
 #[cfg(test)]
 mod test {
     use super::UrlVerifier;
-    use crate::service_provider::ServiceProvider;
+    use crate::service_provider::{SamlRedirect, ServiceProvider};
     use chrono::{DateTime, Utc};
 
     #[test]
@@ -705,7 +705,7 @@ mod test {
         let private_key = openssl::pkey::PKey::from_rsa(private_key).unwrap();
 
         let signed_request_url = authn_request
-            .signed_redirect("", private_key)
+            .signed_redirect(None, private_key)
             .unwrap()
             .unwrap();
 
@@ -757,7 +757,7 @@ mod test {
         let private_key = openssl::pkey::PKey::from_ec_key(private_key).unwrap();
 
         let signed_request_url = authn_request
-            .signed_redirect("", private_key)
+            .signed_redirect(None, private_key)
             .unwrap()
             .unwrap();
 
